@@ -12,3 +12,6 @@ How to get this project running:
 
 Some things to know.
 LiqPay requires some android permissions. That permissions are automatically requested on first app run
+
+PS Privatbank removed documentation from their site but it's still on the google cache here
+https://webcache.googleusercontent.com/search?q=cache:xXoKxehQEy0J:https://www.liqpay.ua/ru/doc/aos+&cd=1&hl=ru&ct=clnk&gl=ua
