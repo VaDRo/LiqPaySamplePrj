@@ -4,8 +4,8 @@ public class ConfigurationService {
     private static ConfigurationService _instance;
     //private String LiqPayPublicKey = "i322*********";
     //private String LiqPayPrivateKey = "mEZL2X********************************";
-    private String LiqPayPublicKey = "i90401010173";
-    private String LiqPayPrivateKey = "C9R2kSALAqSZOjuzUZZixwHeTczTlWW2XFZcg0li";
+    private String LiqPayPublicKey = "YOUR_LIQPAY_PUBLIC_KEY";
+    private String LiqPayPrivateKey = "YOUR_LIQPAY_PRIVATE_KEY";
     private int RetryInterval = 10000;     //Retry interval, milliseconds
 
     private ConfigurationService() {    }
