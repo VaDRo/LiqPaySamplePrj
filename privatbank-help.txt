@@ -1,0 +1,572 @@
+1. Использование билиотеки LiqPay «Оплата в 1 клик»»
+Библиотека “Оплата в 1 клик” для Android OS (далее “библиотека”) разработана на Java и представлена единым jar файлом, который содержит инструменты взаимодействия с API LiqPay.
+
+Jar файл необходимо добавить в проект для последующего использования.
+
+Вам необходимо добавить следующее разрешение в AndroidManifest.xml файле:
+<uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+<uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+
+Пример активити в файле AndroidManifest.xml.:
+<activity android:name="YourActivity"
+	      android:label="@string/your_activity_name">
+	  <intent-filter>
+	      <action android:name="android.intent.action.MAIN"/>
+	      <category android:name="android.intent.category.LAUNCHER"/>
+	  </intent-filter>
+	</activity>
+ 	<activity android:name="ua.privatbank.paylibliqpay.CheckoutActivity"/>
+2. Примеры использования библиотеки:
+2.1. Шаг №1 - card auth
+Запрос можно выполнить 2-я способами.
+1) используя server-server Auth API. 
+2) используя библиотеку.
+
+2.1.1. Card Auth с использованием server-server API.
+
+Прямая ссылка на описание API: https://www.liqpay.com/ru/doc/auth).
+
+Пример активити в файле AndroidManifest.xml.:
+HashMap params = new HashMap();
+params.put("version", "3");
+params.put("amount", "1");
+params.put("currency", "USD");
+params.put("description", "description text");
+params.put("order_id", "order_id_1"); 
+params.put("card", "54570934949556060");
+params.put("card_exp_month", "11");
+params.put("card_exp_yesr", "17");
+params.put("card_cvv", "171");
+
+LiqPay liqpay = new LiqPay(PUBLIC_KEY, PRIVATE_KEY);
+HashMap res = liqpay.api("payment/auth", params);    
+System.out.println(res.get("status"));
+	
+
+Пример активити в файле AndroidManifest.xml:
+#!/bin/bash
+PUBLIC_KEY='your_public_key'
+PRIVATE_KEY='your_private_key'
+API_URL='https://www.liqpay.com/api/payment/auth'
+JSON="{ 
+\"version\" : 3,
+\"public_key\" : \"${PUBLIC_KEY}\", 
+\"phone\" : \"380950000001\", 
+\"amount\" : \"1\", 
+\"currency\" : \"USD\", 
+\"description\" : \"description text\", 
+\"order_id\" : \"order_id_1\", 
+\"card\" : \"4731195301524634\", 
+\"card_exp_month\" : \"03\", 
+\"card_exp_year\" : \"22\", 
+\"card_cvv\" : \"111\"
+}"
+# DATA is besa64 encode result from JSON string
+DATA=$(echo -n ${JSON} | base64)
+# SIGNATURE is base64 encode result from sha1 binary hash from concatenate string ${PRIVATE_KEY}${DATA}${PRIVATE_KEY}
+SIGNATURE=$(echo -n "${PRIVATE_KEY}${DATA}${PRIVATE_KEY}" | openssl dgst -binary -sha1 | base64)
+# REQ is json response from liqpay
+REQ=$(curl --silent -XPOST ${API_URL} --data-urlencode data="${DATA}" --data-urlencode signature="${SIGNATURE}")
+echo "Result: ${REQ}"
+
+# DATA is in example
+# eyAidmVyc2lvbiIgOiAzLCAicHVibGljX2tleSIgOiAieW91cl9wdWJsaWNfa2V5IiwgInBob25l
+# IiA6ICIzODA5NTAwMDAwMDEiLCAiYW1vdW50IiA6ICIxIiwgImN1cnJlbmN5IiA6ICJVU0QiLCAi
+# ZGVzY3JpcHRpb24iIDogImRlc2NyaXB0aW9uIHRleHQiLCAib3JkZXJfaWQiIDogIm9yZGVyX2lk
+# XzEiLCAiY2FyZCIgOiAiNDczMTE5NTMwMTUyNDYzNCIsICJjYXJkX2V4cF9tb250aCIgOiAiMDMi
+# LCAiY2FyZF9leHBfeWVhciIgOiAiMjIiLCAiY2FyZF9jdnYiIDogIjExMSIgfQ==
+# SIGNATURE is in example
+# WpapLS5wx2V+IJouAwplFPluFAo=
+	
+
+2.1.2. Card Auth с использованием библиотеки:.
+Безопасность:
+a) private key хранится в SDK, 
+b) библиотека формирует сигнатуру.
+
+Метод чекаут:
+HashMap<String, String> map = new HashMap<String, String>();
+map.put("version", "3");
+map.put("public_key", "your public_key");
+map.put("action", "auth");
+map.put("amount", "payment amount");
+map.put("currency", "payment currency");
+map.put("description", "account top-up");
+map.put("order_id", "123456");
+map.put("language", "ru");
+map.put("server_url", "https://www.wargaming.net");
+map.put("card", "5457095645459696");
+map.put("card_exp_month", "11");
+map.put("card_exp_year", "17");
+map.put("card_exp_cvv", "171");
+LiqPay.api(getApplicationContext(),"auth", map, "your_privat_key", callBack);
+	
+
+Параметры запроса инициализации:
+
+#	parameter	value
+1	context	context приложения
+2	params	параметры запроса
+3	privateKey	shop private key в LiqPay. Не рекомендуется хранить ключи в коде приложения, тк ключи могут быть дискредитированы во время декомпеляции приложения
+4	version	версия API. текущая версия - 3
+5	public_key	public key - id магазина in LiqPay
+6	action	тип платежа. Значение auth - верификация карты
+7	amount	сумма платежа. Пример: 5, 7.34
+8	currency	валюта платежа. Значение: USD, EUR, RUB, UAH
+9	card	номер карты клиента
+10	card_exp_month	Месяц срока действия карты плательщика. Например: 08
+11	card_exp_year	Год срока действия карты плательщика.Например: 19
+12	card_exp_cvv	CVV/CVV2
+13	description	назначение платежа
+14	order_id	уникальный идентификатор платежа в Вашей системе
+15	language	язык клиента: ru, en, uk
+2.1.3. Card auth с использование библиотеки (рекомендуемый).
+
+LiqPay.api(getApplicationContext(), "auth", your_base64Data, your_signature, callBack);
+	
+
+Параметры data и signature компания формирует на сервере. 
+Пример формирования параметров data и signature:
+
+- JAVA 
+https://github.com/liqpay/sdk-java/blob/master/src/main/java/com/liqpay/LiqPay.java#L89
+
+- PHP
+
+data - result of function base64_encode( $json_string )
+signature - result of function base64_encode( sha1( $private_key . $data . $private_key, 1 ) )
+	
+
+- BASH
+
+#!/bin/bash
+PUBLIC_KEY='your_public_key'
+PRIVATE_KEY='your_private_key'
+JSON="{ 
+\"version\" : 3,
+\"public_key\" : \"${PUBLIC_KEY}\", 
+\"action\" : \"auth\", 
+\"amount\" : 1, 
+\"currency\" : \"USD\",
+\"description\" : \"description text\",
+\"order_id\" : \"order_id_1\"
+\"card\" : \"5456096757575734\"
+\"card_exp_month\" : \"11\"
+\"card_exp_year\" : \"17\"
+\"card_exp_cvv\" : \"171\"
+}"
+# DATA is besa64 encode result from JSON string
+DATA=$(echo -n ${JSON} | base64)
+# SIGNATURE is base64 encode result from sha1 binary hash from concatenate string ${PRIVATE_KEY}${DATA}${PRIVATE_KEY}
+SIGNATURE=$(echo -n "${PRIVATE_KEY}${DATA}${PRIVATE_KEY}" | openssl dgst -binary -sha1 | base64)
+echo "data: ${DATA}"
+echo "signature: ${SIGNATURE}"
+
+# DATA in this example
+# eyAidmVyc2lvbiIgOiAzLCAicHVibGljX2tleSIgOiAieW91cl9wdWJsaWNfa2V5IiwgImFjdGlv
+# biIgOiAicGF5IiwgImFtb3VudCIgOiAxLCAiY3VycmVuY3kiIDogIlVTRCIsICJkZXNjcmlwdGlv
+# biIgOiAiZGVzY3JpcHRpb24gdGV4dCIsICJvcmRlcl9pZCIgOiAib3JkZXJfaWRfMSIgfQ==
+
+# SIGNATURE in this example
+# QvJD5u9Fg55PCx/Hdz6lzWtYwcI=
+	
+
+Статусы:
+success	успешный платеж
+failure	не успешный платеж
+error	платеж отклонен или параметры переданы не верно
+reversed	возврат
+sandbox	тестовый платеж
+Промежуточные статусы
+wait_secure	платеж на проверке фрод-мониторингом
+wait_accept	сумма списана с карты клиента но не зачислена магазину, так как магазин “активирован без возмещения”
+processing	платеж в процессе проведения. Финальный статус платежа будет отправлен на server_url или статус платежа можно проверить используя библиотеку
+2.2. Шаг №2 - первый платеж клиента
+2.2.1. Вариант оплаты через чекаут №1:
+Security:
+c) private key хранится в SDK,
+d) signature формируется библиотекой.
+
+LiqPayCallBack callBack = new LiqPayCallBack() {
+      @Override
+      public void onResponseSuccess(final String resp) {
+          JSONObject object = new JSONObject(resp);
+          if("success".equals(object.optString("status"))){
+              // успех
+             String cardToken = object.optString("card_token");
+          }else {
+              // ошибка
+          }
+      }
+
+      @Override
+      public void onResponceError(final ErrorCode errorCode) {
+
+      }
+  };
+	
+
+Статус платежа и токен карты клиента возвращается в Callback.
+
+HashMap<String, String> map = new HashMap<String, String>();
+map.put("version", "3");
+map.put("public_key", "your public_key");
+map.put("action", "pay");
+map.put("amount", "payment amount");
+map.put("currency", "payment currency");
+map.put("description", "account top-up");
+map.put("order_id", "123456");
+map.put("language", "ru");
+map.put("server_url", "https://www.wargaming.net");
+String privateKey = "your private_key";
+LiqPay.checkout(getApplicationContext(), map, privateKey, callBack);
+
+privateKey - уникальный private key Вашего магазина в системе LiqPay. Не рекомендуется храниться private key в коде приложения (так как он может быть дискредитирован во время декомпеляции приложения) 
+
+Security:
+
+#	parameter	value
+1	version	версия API. Текущая версия - 3
+2	public_key	Public key - уникальный shop id в системе LiqPay
+3	action	тип платежа. pay - покупка
+4	amount	сумма платежа. Пример: 5, 7.34
+5	currency	валюта платежа. Значение: USD, EUR, RUB, UAH
+6	description	назначение платежа
+7	order_id	уникальный идентификатор платежа в Вашей системе
+8	language	язык клиента: ru, en, uk
+9	server_url	URL API в Вашем магазине для получение уведомлений о статусах платежа (server>server). Макс длина - 510 символов
+10	recurringbytoken	параметр позволяет генерировать токен карты плательщика card_token, который Вы получите в callback ответе на server_url. 
+card_tokenозволяет проводить платежи. payment/paytoken. Значение:1
+2.2.2. Вариант оплаты через чекаут №2:
+
+LiqPayCallBack callBack = new LiqPayCallBack() {
+      @Override
+      public void onResponseSuccess(final String resp) {
+          JSONObject object = new JSONObject(resp);
+          if("success".equals(object.optString("status"))){
+              // успех
+             String cardToken = object.optString("card_token");
+          }else {
+              // error
+          }
+      }
+
+      @Override
+      public void onResponceError(final ErrorCode errorCode) {
+
+      }
+};
+
+Вариант оплаты через чекаут
+Пример активити в файле AndroidManifest.xml.:
+LiqPay.checkout(getApplicationContext(), data, signature, callBack);
+
+Параметры data и signature компания формирует на сервере. 
+b) Пример формирования data и signature:
+
+- JAVA 
+https://github.com/liqpay/sdk-java/blob/master/src/main/java/com/liqpay/LiqPay.java#L89
+
+- PHP
+
+data - result of function base64_encode( $json_string )
+signature - result of function base64_encode( sha1( $private_key . $data . $private_key, 1 ) )
+
+- BASH
+#!/bin/bash
+PUBLIC_KEY='your_public_key'
+PRIVATE_KEY='your_private_key'
+JSON="{ 
+\"version\" : 3,
+\"public_key\" : \"${PUBLIC_KEY}\", 
+\"action\" : \"pay\", 
+\"amount\" : 1, 
+\"currency\" : \"USD\",
+\"description\" : \"description text\",
+\"order_id\" : \"order_id_1\"
+}"
+# DATA is besa64 encode result from JSON string
+DATA=$(echo -n ${JSON} | base64)
+# SIGNATURE is base64 encode result from sha1 binary hash from concatenate string ${PRIVATE_KEY}${DATA}${PRIVATE_KEY}
+SIGNATURE=$(echo -n "${PRIVATE_KEY}${DATA}${PRIVATE_KEY}" | openssl dgst -binary -sha1 | base64)
+echo "data: ${DATA}"
+echo "signature: ${SIGNATURE}"
+
+# DATA in this example
+# eyAidmVyc2lvbiIgOiAzLCAicHVibGljX2tleSIgOiAieW91cl9wdWJsaWNfa2V5IiwgImFjdGlv
+# biIgOiAicGF5IiwgImFtb3VudCIgOiAxLCAiY3VycmVuY3kiIDogIlVTRCIsICJkZXNjcmlwdGlv
+# biIgOiAiZGVzY3JpcHRpb24gdGV4dCIsICJvcmRlcl9pZCIgOiAib3JkZXJfaWRfMSIgfQ==
+
+# SIGNATURE in this example
+# QvJD5u9Fg55PCx/Hdz6lzWtYwcI=
+
+success	успешный платеж
+failure	не успешный платеж
+error	платеж отклонен или параметры переданы не верно
+reversed	возврат
+sandbox	тестовый платеж
+Промежуточные статусы
+wait_secure	платеж на проверке фрод-мониторингом
+wait_accept	сумма списана с карты клиента но не зачислена магазину, так как магазин “активирован без возмещения”
+processing	платеж в процессе проведения. Финальный статус платежа будет отправлен на server_url или статус платежа можно проверить используя библиотеку
+2.3. Шаг №3 - последующие оплаты клиента
+
+Запрос на списание средств с использованием токена клиента = оплата в 1 клик. 
+Запрос может быть выполнен 2-я способами:
+используя server-server Pay token API. 
+используя библиотеку:
+
+2.3.1. Списание с карты клиента с использованием server-server API.
+
+PayToken APi используется для выполнения запроса на списание с карты клиента (прямая ссылка на описание API: https://www.liqpay.com/ru/doc/paytoken)
+
+JAVA SDK https://github.com/liqpay/sdk-java
+
+HashMap params = new HashMap();
+params.put("version", "3");
+params.put("phone", "380950000001");
+params.put("amount", "1");
+params.put("currency", "USD");
+params.put("description", "description text");
+params.put("order_id", "order_id_1"); 
+params.put("card_token", "B5BВB0D00B88B00ED00A00D0D");
+
+LiqPay liqpay = new LiqPay(PUBLIC_KEY, PRIVATE_KEY);
+HashMap res = liqpay.api("payment/paytoken", params);    
+System.out.println(res.get("status"));
+
+Примеры формирования запроса на BASH:
+
+#!/bin/bash
+PUBLIC_KEY='your_public_key'
+PRIVATE_KEY='your_private_key'
+API_URL='https://www.liqpay.com/api/payment/paytoken'
+JSON="{ 
+    \"version\" : 3,
+    \"public_key\" : \"${PUBLIC_KEY}\", 
+    \"phone\" : \"380950000001\",
+    \"amount\" : 1,
+    \"currency\" : \"USD\",
+    \"description\" : \"description text\",
+    \"order_id\" : \"order_id_1\",
+    \"card_token\" : \"B5BВB0D00B88B00ED00A00D0D\"
+}"
+# DATA is besa64 encode result from JSON string
+DATA=$(echo -n ${JSON} | base64)
+# SIGNATURE is base64 encode result from sha1 binary hash from concatenate string ${PRIVATE_KEY}${DATA}${PRIVATE_KEY}
+SIGNATURE=$(echo -n "${PRIVATE_KEY}${DATA}${PRIVATE_KEY}" | openssl dgst -binary -sha1 | base64)
+# REQ is json response from liqpay
+REQ=$(curl --silent -XPOST ${API_URL} --data-urlencode data="${DATA}" --data-urlencode signature="${SIGNATURE}")
+echo "Result: ${REQ}"
+
+# DATA in this example
+# eyAidmVyc2lvbiIgOiAzLCAicHVibGljX2tleSIgOiAieW91cl9wdWJsaWNfa2V5IiwgInBob25l
+# IiA6ICIzODA5NTAwMDAwMDEiLCAiYW1vdW50IiA6IDEsICJjdXJyZW5jeSIgOiAiVVNEIiwgImRl
+# c2NyaXB0aW9uIiA6ICJkZXNjcmlwdGlvbiB0ZXh0IiwgIm9yZGVyX2lkIiA6ICJvcmRlcl9pZF8x
+# IiwgImNhcmRfdG9rZW4iIDogIkI1QtCSQjBEMDBCODhCMDBFRDAwQTAwRDBEIiB9
+
+# SIGNATURE in this example
+# cLoEZBOx8jVLJDQk7QFV/P9IyJI=
+
+2.3.2. Списание с карты клиента с использованием server-server API.
+
+Security:
+e) private key хранится в SDK,
+f) библиотека формирует signature.
+
+Метод чекаут:
+HashMap<String, String> map = new HashMap<String, String>();
+map.put("version", "3");
+map.put("public_key", "your public_key");
+map.put("action", "pay");
+map.put("amount", "payment amount");
+map.put("currency", "payment currency");
+map.put("description", "account top-up");
+map.put("order_id", "123456");
+map.put("language", "ru");
+map.put("server_url", "https://www.wargaming.net");
+map.put("recurringbytoken", "1");
+map.put("card_token", "B5BВB0D00B88B00ED00A00D0D");
+LiqPay.api(getApplicationContext(),"paytoken", map, "your_privat_key", callBack);
+
+Параметры запроса инициализации:
+
+#	parameter	value
+1	context	context приложения
+2	params	параметры запроса
+3	privateKey	shop private key в LiqPay. Не рекомендуется хранить ключи в коде приложения, тк ключи могут быть дискредитированы во время декомпеляции приложения
+4	callback	ответ от LiqPay
+5	version	версия API. текущая версия - 3
+6	public_key	public key - shop id в системе LiqPay
+7	action	тип платежа. Значение pay - покупка
+8	amount	сумма платежа. Пример: 5, 7.34
+9	currency	валюта платежа. Значение: USD, EUR, RUB, UAH
+10	recurringbytoken	параметр позволяет совершать платеж без использования реквизитов карты. 
+Значение:1
+11	card_token	токен карты клиента
+12	description	назначение платежа
+13	order_id	уникальный id платежа в Вашей системе
+13	description	назначение платежа
+14	language	язык клиента: ru, en, uk
+15	order_id	URL API в Вашем магазине для получения изменений статуса (server->server). Макс длина 510 символов.
+2.3.3. Списание с карты по токену с использованием библиотеки (рекомендованый).
+
+LiqPay.api(getApplicationContext(), "paytoken", your_base64Data, your_signature, callBack);
+
+Параметры data и signature компания формирует на сервере. 
+Пример формирования параметров data и signature:
+
+- JAVA 
+https://github.com/liqpay/sdk-java/blob/master/src/main/java/com/liqpay/LiqPay.java#L89
+
+- PHP
+
+data - result of function base64_encode( $json_string )
+signature - result of function base64_encode( sha1( $private_key . $data . $private_key, 1 ) )
+	
+
+- BASH
+
+#!/bin/bash
+PUBLIC_KEY='your_public_key'
+PRIVATE_KEY='your_private_key'
+JSON="{ 
+\"version\" : 3,
+\"public_key\" : \"${PUBLIC_KEY}\", 
+\"action\" : \"pay\", 
+\"amount\" : 1, 
+\"currency\" : \"USD\",
+\"description\" : \"description text\",
+\"order_id\" : \"order_id_1\"
+}"
+# DATA is besa64 encode result from JSON string
+DATA=$(echo -n ${JSON} | base64)
+# SIGNATURE is base64 encode result from sha1 binary hash from concatenate string ${PRIVATE_KEY}${DATA}${PRIVATE_KEY}
+SIGNATURE=$(echo -n "${PRIVATE_KEY}${DATA}${PRIVATE_KEY}" | openssl dgst -binary -sha1 | base64)
+echo "data: ${DATA}"
+echo "signature: ${SIGNATURE}"
+
+# DATA in this example
+# eyAidmVyc2lvbiIgOiAzLCAicHVibGljX2tleSIgOiAieW91cl9wdWJsaWNfa2V5IiwgImFjdGlv
+# biIgOiAicGF5IiwgImFtb3VudCIgOiAxLCAiY3VycmVuY3kiIDogIlVTRCIsICJkZXNjcmlwdGlv
+# biIgOiAiZGVzY3JpcHRpb24gdGV4dCIsICJvcmRlcl9pZCIgOiAib3JkZXJfaWRfMSIgfQ==
+
+# SIGNATURE in this example
+# QvJD5u9Fg55PCx/Hdz6lzWtYwcI=
+	
+
+Статусы:
+success	успешный платеж
+failure	не успешный платеж
+error	платеж отклонен или параметры переданы не верно
+reversed	возврат
+sandbox	тестовый платеж
+Промежуточные статусы
+wait_secure	платеж на проверке фрод-мониторингом
+wait_accept	сумма списана с карты клиента но не зачислена магазину, так как магазин “активирован без возмещения”
+processing	платеж в процессе проведения. Финальный статус платежа будет отправлен на server_url или статус платежа можно проверить используя библиотеку
+2.4. Проверка статуса
+
+Запрос на проверку статуса может быть выполнен 3-я способами:
+1. с использованием библиотеки,
+2. с использованием server-server API.
+3. с использованием библиотеки (рекомендуемый).
+
+2.4.1 Проверка статуса с использованием библиотеки
+
+Security:
+a) private key хранится в SDK,
+b) библиотека формирует signature.
+
+Запрос не в UI потоке:
+HashMap<String, String> map = new HashMap<String, String>();
+                        map.put("version", "3");
+                        map.put("public_key", "your_public_key");
+                        map.put("order_id", "123456");
+                
+                        LiqPay.api(getApplicationContext(), "status", map, "your_privat_key", callBack);
+
+2.4.2 Проверка статуса с использованием server-server API
+
+Status API используется для выполнения запроса на проверку статуса (прямая ссылка на описание API: https://www.liqpay.com/ru/doc/status)
+
+private key хранится в SDK,
+
+Пример формирования запроса на BASH:
+#!/bin/bash
+PUBLIC_KEY='your_public_key'
+PRIVATE_KEY='your_private_key'
+API_URL='https://www.liqpay.com/api/payment/status'
+JSON="{ 
+    \"version\" : 3,
+    \"public_key\" : \"${PUBLIC_KEY}\", 
+    \"order_id\" : \"order_id_1\"
+}"
+# DATA is besa64 encode result from JSON string
+DATA=$(echo -n ${JSON} | base64)
+# SIGNATURE is base64 encode result from sha1 binary hash from concatenate string ${PRIVATE_KEY}${DATA}${PRIVATE_KEY}
+SIGNATURE=$(echo -n "${PRIVATE_KEY}${DATA}${PRIVATE_KEY}" | openssl dgst -binary -sha1 | base64)
+# REQ is json response from liqpay
+REQ=$(curl --silent -XPOST ${API_URL} --data-urlencode data="${DATA}" --data-urlencode signature="${SIGNATURE}")
+echo "Result: ${REQ}"
+
+# DATA in this example
+# eyAidmVyc2lvbiIgOiAzLCAicHVibGljX2tleSIgOiAieW91cl9wdWJsaWNfa2V5IiwgIm9yZGVy
+# X2lkIiA6ICJvcmRlcl9pZF8xIiB9
+
+# SIGNATURE in this example
+# 77Ob26+gqYrR5yEsW80ynwZgGq8=
+
+Параметры запроса инициализации:
+
+#	parameter	value
+1	version	версия API. Текущая версия - 3
+2	public_key	Public key - уникальный shop id в системе LiqPay
+7	order_id	уникальный ID платежа в Вашем магазине. Макс длина 255 символов
+2.4.3. Проверка статуса с использованием библиотеки (рекомендуемый).
+
+Пример формирования запроса на BASH:
+LiqPay.api(getApplicationContext(), "status", your_base64Data, your_signature, callBack);
+
+Параметры data и signature компания формирует на сервере. 
+Пример формирования параметров data и signature:
+
+- JAVA 
+https://github.com/liqpay/sdk-java/blob/master/src/main/java/com/liqpay/LiqPay.java#L89
+
+- PHP
+
+data - result of function base64_encode( $json_string )
+signature - result of function base64_encode( sha1( $private_key . $data . $private_key, 1 ) )
+	
+
+- BASH
+
+#!/bin/bash
+PUBLIC_KEY='your_public_key'
+PRIVATE_KEY='your_private_key'
+JSON="{ 
+\"version\" : 3,
+\"public_key\" : \"${PUBLIC_KEY}\", 
+\"action\" : \"pay\", 
+\"amount\" : 1, 
+\"currency\" : \"USD\",
+\"description\" : \"description text\",
+\"order_id\" : \"order_id_1\"
+}"
+# DATA is besa64 encode result from JSON string
+DATA=$(echo -n ${JSON} | base64)
+# SIGNATURE is base64 encode result from sha1 binary hash from concatenate string ${PRIVATE_KEY}${DATA}${PRIVATE_KEY}
+SIGNATURE=$(echo -n "${PRIVATE_KEY}${DATA}${PRIVATE_KEY}" | openssl dgst -binary -sha1 | base64)
+echo "data: ${DATA}"
+echo "signature: ${SIGNATURE}"
+
+# DATA in this example
+# eyAidmVyc2lvbiIgOiAzLCAicHVibGljX2tleSIgOiAieW91cl9wdWJsaWNfa2V5IiwgImFjdGlv
+# biIgOiAicGF5IiwgImFtb3VudCIgOiAxLCAiY3VycmVuY3kiIDogIlVTRCIsICJkZXNjcmlwdGlv
+# biIgOiAiZGVzY3JpcHRpb24gdGV4dCIsICJvcmRlcl9pZCIgOiAib3JkZXJfaWRfMSIgfQ==
+
+# SIGNATURE in this example
+# QvJD5u9Fg55PCx/Hdz6lzWtYwcI=
+	
